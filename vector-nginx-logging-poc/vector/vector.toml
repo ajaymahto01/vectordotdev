@@ -22,6 +22,18 @@ inputs = ["nginx_access"]
 # Use a standard apache combined log pattern (includes referer and user agent)
 pattern = "%{COMBINEDAPACHELOG}"
 
+# Transform: convert timestamp to ISO 8601 format
+[transforms.convert_timestamp]
+type = "remap"
+inputs = ["parse_access"]
+source = '''
+# Parse the timestamp from nginx log format and convert to ISO 8601
+if exists(.timestamp) {
+  .@timestamp = parse_timestamp!(.timestamp, "%d/%b/%Y:%H:%M:%S %z")
+  del(.timestamp)
+}
+'''
+
 # Transform: add metadata to error logs
 [transforms.format_error]
 type = "remap"
@@ -35,7 +47,7 @@ source = '''
 # Sink: Send all logs to Elasticsearch
 [sinks.elasticsearch]
 type = "elasticsearch"
-inputs = ["parse_access", "format_error"]
+inputs = ["convert_timestamp", "format_error"]
 endpoint = "http://elasticsearch:9200"
 compression = "gzip"
 mode = "bulk"
