@@ -1,0 +1,14 @@
+# Logs - exclude generated log files but keep directory structure
+vector-nginx-logging-poc/logs/nginx/access.log
+vector-nginx-logging-poc/logs/nginx/error.log
+
+# OS files
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml

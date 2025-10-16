@@ -1,59 +1,46 @@
-[sources.nginx_logs]
-type = "file"
-include = ["/logs/nginx/access.log"]
-ignore_older = 86400
-read_from = "beginning"
+# Vector configuration for nginx log shipping to Elasticsearch
+# This POC tails nginx access and error logs, parses them, and forwards to Elasticsearch
 
-[sinks.elasticsearch]
-type = "elasticsearch"
-inputs = ["nginx_logs"]
-endpoint = "http://elasticsearch:9200"
-index = "nginx-logs-%Y.%m.%d"
-compression = "gzip"
-batch.size = 1000
-batch.timeout = 5
-
-[transforms.json]
-type = "remap"
-inputs = ["nginx_logs"]
-source = '''
-. = parse_json!(.message)
-'''
-
-# Vector config: tail nginx logs (mounted at /var/log/nginx inside the container),
-# parse access logs with a grok parser and forward both access and error logs to Elasticsearch.
-
+# Source: nginx access logs
 [sources.nginx_access]
 type = "file"
 include = ["/var/log/nginx/access.log"]
 ignore_older = 86400
 read_from = "beginning"
 
+# Source: nginx error logs
 [sources.nginx_error]
 type = "file"
 include = ["/var/log/nginx/error.log"]
 ignore_older = 86400
 read_from = "beginning"
 
+# Transform: parse nginx access logs using grok parser
 [transforms.parse_access]
 type = "grok_parser"
 inputs = ["nginx_access"]
 # Use a standard apache combined log pattern (includes referer and user agent)
 pattern = "%{COMBINEDAPACHELOG}"
 
+# Transform: add metadata to error logs
 [transforms.format_error]
 type = "remap"
 inputs = ["nginx_error"]
 source = '''
 # Keep the original message under error_message for clearer indexing
-error_message = .message
+.error_message = .message
+.log_type = "error"
 '''
 
+# Sink: Send all logs to Elasticsearch
 [sinks.elasticsearch]
 type = "elasticsearch"
 inputs = ["parse_access", "format_error"]
 endpoint = "http://elasticsearch:9200"
-index = "nginx-logs-%Y.%m.%d"
 compression = "gzip"
+mode = "bulk"
+
+[sinks.elasticsearch.bulk]
+index = "nginx-logs-%Y.%m.%d"
 
 # Keep the configuration minimal and let Vector use sensible defaults for batching/backoff.
