@@ -1,0 +1,69 @@
+# Vector configuration for shipping nginx logs to Elasticsearch
+
+# Data directory for Vector's state
+data_dir = "/var/lib/vector"
+
+# Source: Read nginx access logs
+[sources.nginx_access_logs]
+  type = "file"
+  include = ["/var/log/nginx/access.log"]
+  read_from = "beginning"
+
+# Source: Read nginx error logs
+[sources.nginx_error_logs]
+  type = "file"
+  include = ["/var/log/nginx/error.log"]
+  read_from = "beginning"
+
+# Transform: Parse JSON logs from nginx access log
+[transforms.parse_nginx_access]
+  type = "remap"
+  inputs = ["nginx_access_logs"]
+  source = '''
+    . = parse_json!(.message)
+    .log_type = "nginx_access"
+    .timestamp = now()
+  '''
+
+# Transform: Parse nginx error logs
+[transforms.parse_nginx_error]
+  type = "remap"
+  inputs = ["nginx_error_logs"]
+  source = '''
+    .log_type = "nginx_error"
+    .timestamp = now()
+  '''
+
+# Sink: Send logs to Elasticsearch
+[sinks.elasticsearch_access]
+  type = "elasticsearch"
+  inputs = ["parse_nginx_access"]
+  endpoint = "http://elasticsearch:9200"
+  mode = "bulk"
+  
+  # Index configuration
+  bulk.index = "nginx-access-%Y.%m.%d"
+  
+  # API version
+  api_version = "v8"
+
+# Sink: Send error logs to Elasticsearch
+[sinks.elasticsearch_error]
+  type = "elasticsearch"
+  inputs = ["parse_nginx_error"]
+  endpoint = "http://elasticsearch:9200"
+  mode = "bulk"
+  
+  # Index configuration
+  bulk.index = "nginx-error-%Y.%m.%d"
+  
+  # API version
+  api_version = "v8"
+
+# Optional: Console output for debugging
+[sinks.console]
+  type = "console"
+  inputs = ["parse_nginx_access", "parse_nginx_error"]
+  
+  [sinks.console.encoding]
+    codec = "json"
