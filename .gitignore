@@ -1,0 +1,5 @@
+# Ignore log files generated during testing
+nginx/logs/*.log
+
+# Docker-related
+.env
