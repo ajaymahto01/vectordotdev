@@ -1,0 +1,17 @@
+server:
+  port: 5601
+  host: "0.0.0.0"
+
+elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+
+logging:
+  appenders:
+    default:
+      type: console
+      layout:
+        type: json
+  level: info
+
+kibana:
+  index: ".kibana"

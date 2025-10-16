@@ -1,0 +1,58 @@
+# Vector configuration for nginx log shipping to Elasticsearch
+# This POC tails nginx access and error logs, parses them, and forwards to Elasticsearch
+
+# Source: nginx access logs
+[sources.nginx_access]
+type = "file"
+include = ["/var/log/nginx/access.log"]
+ignore_older = 86400
+read_from = "beginning"
+
+# Source: nginx error logs
+[sources.nginx_error]
+type = "file"
+include = ["/var/log/nginx/error.log"]
+ignore_older = 86400
+read_from = "beginning"
+
+# Transform: parse nginx access logs using grok parser
+[transforms.parse_access]
+type = "grok_parser"
+inputs = ["nginx_access"]
+# Use a standard apache combined log pattern (includes referer and user agent)
+pattern = "%{COMBINEDAPACHELOG}"
+
+# Transform: convert timestamp to ISO 8601 format
+[transforms.convert_timestamp]
+type = "remap"
+inputs = ["parse_access"]
+source = '''
+# Parse the timestamp from nginx log format and convert to ISO 8601
+if exists(.timestamp) {
+  .@timestamp = parse_timestamp!(.timestamp, "%d/%b/%Y:%H:%M:%S %z")
+  del(.timestamp)
+}
+'''
+
+# Transform: add metadata to error logs
+[transforms.format_error]
+type = "remap"
+inputs = ["nginx_error"]
+source = '''
+# Keep the original message under error_message for clearer indexing
+.error_message = .message
+.log_type = "error"
+'''
+
+# Sink: Send all logs to Elasticsearch
+[sinks.elasticsearch]
+type = "elasticsearch"
+inputs = ["convert_timestamp", "format_error"]
+endpoint = "http://elasticsearch:9200"
+compression = "gzip"
+mode = "bulk"
+
+[sinks.elasticsearch.bulk]
+index = "nginx-logs-%Y.%m.%d"
+
+# Keep the configuration minimal and let Vector use sensible defaults for batching/backoff.
