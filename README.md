@@ -34,12 +34,12 @@ nginx (generates logs) → Vector (ships logs) → Elasticsearch (stores logs) �
 
 1. **Start all services**:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 2. **Verify all services are running**:
    ```bash
-   docker-compose ps
+   docker compose ps
    ```
 
 3. **Generate some nginx logs** by accessing the nginx server:
@@ -51,19 +51,18 @@ nginx (generates logs) → Vector (ships logs) → Elasticsearch (stores logs) �
 4. **Access Kibana** at http://localhost:5601
 
 5. **Configure Kibana** (first time only):
-   - Navigate to Management → Stack Management → Index Management
-   - You should see indices like `nginx-access-YYYY.MM.DD` and `nginx-error-YYYY.MM.DD`
-   - Go to Management → Stack Management → Data Views
+   - Navigate to Management → Stack Management → Data Views
    - Click "Create data view"
    - Enter `nginx-access-*` as the index pattern
-   - Select `@timestamp` or `timestamp` as the time field
-   - Click "Create data view"
-   - Repeat for `nginx-error-*` if needed
+   - Select `timestamp` as the time field
+   - Click "Save data view to Kibana"
 
 6. **View logs in Kibana**:
    - Navigate to Analytics → Discover
    - Select the `nginx-access-*` data view
-   - You should see the nginx access logs
+   - You should see the nginx access logs with all the parsed fields
+
+For detailed instructions, see [SETUP_GUIDE.md](SETUP_GUIDE.md)
 
 ## Service Details
 
